@@ -69,9 +69,17 @@ var DaemonProxy = function() {
     };
 
     self.getRobot = function(serialId) {
-        var handle = Module.ccall('daemon_get_robot', '*',
-                ['*', 'string'], [self.instance, serialId]);
-        return new Robot(handle);
+        return new Promise( function(resolve, reject) {
+            var handle = Module.ccall('daemon_get_robot', '*',
+                    ['*', 'string'], [self.instance, serialId]);
+            var cb_wrapper = function() {
+                resolve(new Robot(handle));
+            };
+            var cb_ptr = Module.Runtime.addFunction(cb_wrapper);
+            Module.ccall('daemon_connect_robot', 'number',
+                    ['*', '*', 'string', '*'],
+                    [self.instance, handle, serialId, cb_ptr]);
+        });
     };
 }
 

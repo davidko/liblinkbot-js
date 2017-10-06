@@ -4,7 +4,7 @@ use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_char;
 
-use linkbot_core::{DaemonProxy, Robot};
+use linkbot_core::{DaemonProxy, Robot, Goal};
 
 extern {
     fn emscripten_exit_with_live_runtime();
@@ -75,12 +75,39 @@ pub extern fn daemon_get_robot(daemon: *mut DaemonProxy,
     Box::into_raw( Box::new(robot) )
 }
 
+#[no_mangle]
+pub extern fn daemon_connect_robot(daemon: *mut DaemonProxy,
+                                   robot: *mut Robot,
+                                   serial_id: *mut c_char,
+                                   cb: extern fn() ) {
+    //! Make the daemon send a "connect robot" signal
+    let mut d = unsafe {
+        Box::from_raw(daemon)
+    };
+    let mut r = unsafe {
+        Box::from_raw(robot)
+    };
+
+    r.set_connect_event_handler(move |_| {
+        cb();
+    });
+    
+    unsafe {
+        let cstring = CString::from_raw(serial_id);
+        d.connect_robot(cstring.to_str().unwrap()).unwrap();
+        mem::forget(cstring);
+    }
+
+    Box::into_raw(d);
+    Box::into_raw(r);
+}
+
 //
 // Robot Interface
 //
 
 #[no_mangle]
-pub extern fn robot_set_led_color(robot: &mut Robot,
+pub extern fn robot_set_led_color(robot: *mut Robot,
                                   red: u8,
                                   green: u8,
                                   blue: u8,
@@ -93,6 +120,42 @@ pub extern fn robot_set_led_color(robot: &mut Robot,
     println!("Setting led color to: {}, {}, {}", red, green, blue);
     r.set_led_color(red, green, blue, move || { 
         println!("Robot set_led_color() received reply!");
+        cb(); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
+pub extern fn robot_move(robot: *mut Robot,
+                         mask: u8,
+                         relative_mask: u8,
+                         angle1: f32,
+                         angle2: f32,
+                         angle3: f32,
+                         cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    let goals:Vec<Option<Goal>> = vec![angle1, angle2, angle3].iter().enumerate().map(|(i, angle)| {
+        if mask & (1<<i) != 0 {
+            let mut g = Goal::new();
+            if relative_mask & (1<<i) != 0 {
+                g.set_field_type(linkbot_core::Goal_Type::RELATIVE);
+            } else {
+                g.set_field_type(linkbot_core::Goal_Type::ABSOLUTE);
+            }
+            g.set_goal(*angle);
+            g.set_controller(linkbot_core::Goal_Controller::CONSTVEL);
+            Some(g)
+        } else {
+            None
+        }
+    }).collect();
+
+    r.robot_move(goals[0].clone(), goals[1].clone(), goals[2].clone(), move || { 
         cb(); 
     }).unwrap();
 
