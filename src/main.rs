@@ -107,6 +107,20 @@ pub extern fn daemon_connect_robot(daemon: *mut DaemonProxy,
 //
 
 #[no_mangle]
+pub extern fn robot_get_form_factor(robot: *mut Robot, cb: extern fn(u32)) 
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.get_form_factor(move |form| { 
+        cb(form as u32); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_set_led_color(robot: *mut Robot,
                                   red: u8,
                                   green: u8,
@@ -139,7 +153,8 @@ pub extern fn robot_move(robot: *mut Robot,
         Box::from_raw(robot)
     };
 
-    let goals:Vec<Option<Goal>> = vec![angle1, angle2, angle3].iter().enumerate().map(|(i, angle)| {
+    let goals:Vec<Option<Goal>> = vec![angle1, angle2, angle3].iter().enumerate().map(|(i, mut angle)| {
+        let a:f32 = angle * ::std::f32::consts::PI / 180.0;
         if mask & (1<<i) != 0 {
             let mut g = Goal::new();
             if relative_mask & (1<<i) != 0 {
@@ -147,7 +162,7 @@ pub extern fn robot_move(robot: *mut Robot,
             } else {
                 g.set_field_type(linkbot_core::Goal_Type::ABSOLUTE);
             }
-            g.set_goal(*angle);
+            g.set_goal(a);
             g.set_controller(linkbot_core::Goal_Controller::CONSTVEL);
             Some(g)
         } else {
@@ -158,6 +173,32 @@ pub extern fn robot_move(robot: *mut Robot,
     r.robot_move(goals[0].clone(), goals[1].clone(), goals[2].clone(), move || { 
         cb(); 
     }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
+pub extern fn robot_set_joint_event_handler(robot: *mut Robot, 
+                                            handler: Option<extern fn(u32, u32, u32, f32)>,
+                                            completion_cb: extern fn()
+                                            )
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    if let Some(cb) = handler {
+        r.set_joint_event_handler(move |timestamp, joint, state, angle| {
+            cb(timestamp, joint, state as u32, angle);
+        });
+        r.enable_joint_event(true, move|| {
+            completion_cb();
+        });
+    } else {
+        r.enable_joint_event(false, move|| {
+            completion_cb();
+        });
+    }
 
     Box::into_raw(r);
 }
