@@ -125,6 +125,20 @@ pub extern fn robot_get_form_factor(robot: *mut Robot, cb: extern fn(u32))
 }
 
 #[no_mangle]
+pub extern fn robot_reset_encoders(robot: *mut Robot, cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.reset_encoder_revs(move || { 
+        cb(); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_set_buzzer_frequency(robot: *mut Robot,
                                          frequency: f32,
                                          cb: extern fn())
