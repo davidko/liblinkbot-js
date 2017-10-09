@@ -109,12 +109,32 @@ pub extern fn daemon_connect_robot(daemon: *mut DaemonProxy,
 #[no_mangle]
 pub extern fn robot_get_form_factor(robot: *mut Robot, cb: extern fn(u32)) 
 {
+    //! Get the robot's form factor.
+    //! 0: Linkbot-I
+    //! 1: Linkbot-L
+    //! 2: Linkbot-T
     let mut r = unsafe{
         Box::from_raw(robot)
     };
     
     r.get_form_factor(move |form| { 
         cb(form as u32); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
+pub extern fn robot_set_buzzer_frequency(robot: *mut Robot,
+                                         frequency: f32,
+                                         cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.set_buzzer_frequency(frequency, move || { 
+        cb(); 
     }).unwrap();
 
     Box::into_raw(r);
@@ -153,7 +173,7 @@ pub extern fn robot_move(robot: *mut Robot,
         Box::from_raw(robot)
     };
 
-    let goals:Vec<Option<Goal>> = vec![angle1, angle2, angle3].iter().enumerate().map(|(i, mut angle)| {
+    let goals:Vec<Option<Goal>> = vec![angle1, angle2, angle3].iter().enumerate().map(|(i, angle)| {
         let a:f32 = angle * ::std::f32::consts::PI / 180.0;
         if mask & (1<<i) != 0 {
             let mut g = Goal::new();
@@ -193,11 +213,11 @@ pub extern fn robot_set_joint_event_handler(robot: *mut Robot,
         });
         r.enable_joint_event(true, move|| {
             completion_cb();
-        });
+        }).unwrap();
     } else {
         r.enable_joint_event(false, move|| {
             completion_cb();
-        });
+        }).unwrap();
     }
 
     Box::into_raw(r);
