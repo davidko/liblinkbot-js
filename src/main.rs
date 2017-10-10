@@ -102,6 +102,18 @@ pub extern fn daemon_connect_robot(daemon: *mut DaemonProxy,
     Box::into_raw(r);
 }
 
+#[no_mangle]
+pub extern fn daemon_stop_all(daemon: *mut DaemonProxy, cb: extern fn() ) {
+    //! Stop all robots connected to this daemon proxy
+    let mut d = unsafe {
+        Box::from_raw(daemon)
+    };
+
+    d.stop_all_robots(move || { cb(); }).unwrap();
+    
+    Box::into_raw(d);
+}
+
 //
 // Robot Interface
 //
