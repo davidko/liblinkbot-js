@@ -4,6 +4,8 @@ use std::ffi::CString;
 use std::mem;
 use std::os::raw::c_char;
 
+use std::f32::consts::PI;
+
 use linkbot_core::{DaemonProxy, Robot, Goal};
 
 extern {
@@ -182,6 +184,25 @@ pub extern fn robot_set_led_color(robot: *mut Robot,
         println!("Robot set_led_color() received reply!");
         cb(); 
     }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
+pub extern fn robot_set_motor_speeds(robot: *mut Robot,
+                                     mask: u8,
+                                     speed1: f32,
+                                     speed2: f32,
+                                     speed3: f32,
+                                     cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+  
+    let values = vec![speed1, speed2, speed3].iter().map(|x| x*PI/180.0).collect();
+    r.set_motor_controller_omega(mask as u32, values, 
+                                 move|| {cb();} ).unwrap();
 
     Box::into_raw(r);
 }
