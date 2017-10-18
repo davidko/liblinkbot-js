@@ -245,24 +245,24 @@ pub extern fn robot_move(robot: *mut Robot,
 }
 
 #[no_mangle]
-pub extern fn robot_set_joint_event_handler(robot: *mut Robot, 
-                                            handler: Option<extern fn(u32, u32, u32, f32)>,
-                                            completion_cb: extern fn()
-                                            )
+pub extern fn robot_set_accelerometer_event_handler(robot: *mut Robot,
+                                             handler: Option<extern fn(f32, f32, f32, u32)>,
+                                             completion_cb: extern fn()
+                                             )
 {
     let mut r = unsafe{
         Box::from_raw(robot)
     };
 
     if let Some(cb) = handler {
-        r.set_joint_event_handler(move |timestamp, joint, state, angle| {
-            cb(timestamp, joint, state as u32, angle);
+        r.set_accelerometer_event_handler(move |timestamp, x, y, z| {
+            cb(x, y, z, timestamp);
         });
-        r.enable_joint_event(true, move|| {
+        r.enable_accelerometer_event(true, None, move|| {
             completion_cb();
         }).unwrap();
     } else {
-        r.enable_joint_event(false, move|| {
+        r.enable_accelerometer_event(false, None, move|| {
             completion_cb();
         }).unwrap();
     }
@@ -289,6 +289,32 @@ pub extern fn robot_set_button_event_handler(robot: *mut Robot,
         }).unwrap();
     } else {
         r.enable_button_event(false, move|| {
+            completion_cb();
+        }).unwrap();
+    }
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
+pub extern fn robot_set_joint_event_handler(robot: *mut Robot, 
+                                            handler: Option<extern fn(u32, u32, u32, f32)>,
+                                            completion_cb: extern fn()
+                                            )
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    if let Some(cb) = handler {
+        r.set_joint_event_handler(move |timestamp, joint, state, angle| {
+            cb(timestamp, joint, state as u32, angle);
+        });
+        r.enable_joint_event(true, move|| {
+            completion_cb();
+        }).unwrap();
+    } else {
+        r.enable_joint_event(false, move|| {
             completion_cb();
         }).unwrap();
     }
