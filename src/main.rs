@@ -270,6 +270,32 @@ pub extern fn robot_set_joint_event_handler(robot: *mut Robot,
     Box::into_raw(r);
 }
 
+#[no_mangle]
+pub extern fn robot_set_button_event_handler(robot: *mut Robot,
+                                             handler: Option<extern fn(u32, u32, u32)>,
+                                             completion_cb: extern fn()
+                                             )
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    if let Some(cb) = handler {
+        r.set_button_event_handler(move |timestamp, button_no, state| {
+            cb(button_no as u32, state as u32, timestamp);
+        });
+        r.enable_button_event(true, move|| {
+            completion_cb();
+        }).unwrap();
+    } else {
+        r.enable_button_event(false, move|| {
+            completion_cb();
+        }).unwrap();
+    }
+
+    Box::into_raw(r);
+}
+
 fn main() {
     #[cfg(target_os="emscripten")]
     unsafe {
