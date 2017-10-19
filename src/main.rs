@@ -139,6 +139,21 @@ pub extern fn robot_get_form_factor(robot: *mut Robot, cb: extern fn(u32))
 }
 
 #[no_mangle]
+pub extern fn robot_get_joint_angles(robot: *mut Robot,
+                                     cb: extern fn(f32, f32, f32, u32))
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.get_encoder_values(move |timestamp, angles| { 
+        cb(angles[0].clone(), angles[1].clone(), angles[2].clone(), timestamp); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_reset_encoders(robot: *mut Robot, cb: extern fn())
 {
     let mut r = unsafe{
