@@ -139,6 +139,21 @@ pub extern fn robot_get_form_factor(robot: *mut Robot, cb: extern fn(u32))
 }
 
 #[no_mangle]
+pub extern fn robot_get_accelerometer(robot: *mut Robot,
+                                      cb: extern fn(f32, f32, f32))
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.get_accelerometer_data(move |x, y, z| { 
+        cb(x, y, z); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_get_joint_angles(robot: *mut Robot,
                                      cb: extern fn(f32, f32, f32, u32))
 {
