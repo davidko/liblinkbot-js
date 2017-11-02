@@ -275,6 +275,43 @@ pub extern fn robot_move(robot: *mut Robot,
 }
 
 #[no_mangle]
+pub extern fn robot_set_motor_states(robot: *mut Robot,
+                                     mask: u8,
+                                     state1: i8,
+                                     state2: i8,
+                                     state3: i8,
+                                     cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    let goals:Vec<Option<Goal>> = vec![state1, state2, state3].iter().enumerate().map(|(i, state)| {
+        if mask & (1<<i) != 0 {
+            let mut g = Goal::new();
+            if *state == 0 {
+                g.set_field_type(linkbot_core::Goal_Type::RELATIVE);
+                g.set_goal(0.0);
+                g.set_controller(linkbot_core::Goal_Controller::PID);
+            } else {
+                g.set_field_type(linkbot_core::Goal_Type::INFINITE);
+                g.set_goal(*state as f32);
+                g.set_controller(linkbot_core::Goal_Controller::CONSTVEL);
+            }
+            Some(g)
+        } else {
+            None
+        }
+    }).collect();
+
+    r.robot_move(goals[0].clone(), goals[1].clone(), goals[2].clone(), move || { 
+        cb(); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_stop(robot: *mut Robot,
                          mask: u8,
                          cb: extern fn())
@@ -284,7 +321,7 @@ pub extern fn robot_stop(robot: *mut Robot,
     };
     r.stop(Some(mask as u32), move || {
         cb();
-    });
+    }).unwrap();
     Box::into_raw(r);
 }
 
