@@ -275,6 +275,21 @@ pub extern fn robot_move(robot: *mut Robot,
 }
 
 #[no_mangle]
+pub extern fn robot_stop(robot: *mut Robot,
+                         mask: u8,
+                         cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    r.stop(Some(mask as u32), move || {
+        cb();
+    });
+    Box::into_raw(r);
+}
+
+
+#[no_mangle]
 pub extern fn robot_set_accelerometer_event_handler(robot: *mut Robot,
                                              handler: Option<extern fn(f32, f32, f32, u32)>,
                                              completion_cb: extern fn()
