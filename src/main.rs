@@ -219,6 +219,38 @@ pub extern fn robot_set_led_color(robot: *mut Robot,
 }
 
 #[no_mangle]
+pub extern fn robot_set_motor_powers(robot: *mut Robot,
+                                     mask: u8,
+                                     power1: i16,
+                                     power2: i16,
+                                     power3: i16,
+                                     cb: extern fn())
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+  
+    let goals:Vec<Option<Goal>> = vec![power1, power2, power3].iter().enumerate().map(|(i, power)| {
+        let a:f32 = *power as f32;
+        if mask & (1<<i) != 0 {
+            let mut g = Goal::new();
+            g.set_field_type(linkbot_core::Goal_Type::INFINITE);
+            g.set_goal(a);
+            g.set_controller(linkbot_core::Goal_Controller::PID);
+            Some(g)
+        } else {
+            None
+        }
+    }).collect();
+
+    r.robot_move(goals[0].clone(), goals[1].clone(), goals[2].clone(), move || { 
+        cb(); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_set_motor_speeds(robot: *mut Robot,
                                      mask: u8,
                                      speed1: f32,
