@@ -4,4 +4,4 @@ version = "0.1.0"
 authors = ["David Ko <david@barobo.com>"]
 
 [dependencies]
-linkbot-core = { git = "https://github.com/davidko/linkbot-core", tag="v0.0.1" }
+linkbot-core = { git = "https://github.com/davidko/linkbot-core", tag="v0.0.2" }

@@ -154,6 +154,22 @@ pub extern fn robot_get_accelerometer(robot: *mut Robot,
 }
 
 #[no_mangle]
+pub extern fn robot_get_buttons(robot: *mut Robot,
+                                cb: extern fn(u32) // button mask
+                                )
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+    
+    r.get_button_state(move |buttons| { 
+        cb(buttons); 
+    }).unwrap();
+
+    Box::into_raw(r);
+}
+
+#[no_mangle]
 pub extern fn robot_get_joint_angles(robot: *mut Robot,
                                      cb: extern fn(f32, f32, f32, u32))
 {
@@ -403,6 +419,40 @@ pub extern fn robot_set_button_event_handler(robot: *mut Robot,
         }).unwrap();
     } else {
         r.enable_button_event(false, move|| {
+            completion_cb();
+        }).unwrap();
+    }
+
+    Box::into_raw(r);
+}
+
+/// Set a callback for encoder events.
+///
+/// Callback arguments are (jointNo, angle, timestamp)
+#[no_mangle]
+pub extern fn robot_set_encoder_event_handler(robot: *mut Robot,
+                                              granularity: f32,
+                                              handler: Option<extern fn(u32, f32, u32)>,
+                                              completion_cb: extern fn()
+                                             )
+{
+    let mut r = unsafe{
+        Box::from_raw(robot)
+    };
+
+    if let Some(cb) = handler {
+        r.set_encoder_event_handler(move |timestamp, mask, values| {
+            for i in 0..3 {
+                if (mask & (1<<i)) != 0 {
+                    cb(i, values[i as usize], timestamp);
+                }
+            }
+        });
+        r.enable_encoder_event(Some(granularity), Some(granularity), Some(granularity), move|| {
+            completion_cb();
+        }).unwrap();
+    } else {
+        r.enable_encoder_event(None, None, None, move|| {
             completion_cb();
         }).unwrap();
     }
